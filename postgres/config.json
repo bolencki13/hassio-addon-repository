@@ -1,17 +1,15 @@
 {
   "name": "PostgreSQL",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "slug": "postgres",
   "description": "PostgreSQL an object-relational database management system (ORDBMS) with an emphasis on extensibility and standards-compliance.",
   "arch": [
-    "armhf",
-    "armv7",
     "aarch64",
     "amd64"
   ],
   "startup": "system",
   "boot": "auto",
-  "timeout": 60,
+  "timeout": 900,
   "ports": {
     "5432/tcp": null
   },
@@ -28,6 +26,5 @@
     "password": "str",
     "database": "str"
   },
-  "url": "https://github.com/matt-FFFFFF/hassio-addon-postgres/blob/main/postgres/README.md",
-  "image": "mattffffff/postgres-{arch}"
+  "url": "https://github.com/bolencki13/hassio-addon-repository/blob/main/postgres/README.md"
 }

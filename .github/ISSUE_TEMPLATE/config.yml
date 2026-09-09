@@ -1,8 +1,1 @@
-blank_issues_enabled: false
-contact_links:
-  - name: TeslaMate
-    url: https://github.com/matt-FFFFFF/hassio-addon-teslamate
-    about: Please raise issues/discusions on TeslaMate here
-  - name: Postgres
-    url: https://github.com/matt-FFFFFF/hassio-addon-postgres
-    about: Please raise issues/discusions on Postgres here
+blank_issues_enabled: true
