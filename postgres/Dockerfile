@@ -10,7 +10,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN mkdir -p /etc/postgresql-common \
     && echo 'create_main_cluster = false' > /etc/postgresql-common/createcluster.conf \
     && apt-get update \
-    && apt-get install -y --no-install-recommends jq postgresql-12 \
+    && apt-get install -y --no-install-recommends curl jq postgresql-12 \
     && rm -rf /var/lib/apt/lists/*
 
 # Earlier versions of this addon (Alpine-based) ran postgres as uid/gid 70,
@@ -23,9 +23,8 @@ RUN groupmod -g 70 postgres \
 
 ENV PGDATA=/data/postgres
 
-COPY run.sh /usr/local/bin/run.sh
-COPY upgrade.sh /usr/local/bin/upgrade.sh
-RUN chmod +x /usr/local/bin/run.sh /usr/local/bin/upgrade.sh
+COPY run.sh import.sh upgrade.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/run.sh /usr/local/bin/import.sh /usr/local/bin/upgrade.sh
 
 EXPOSE 5432
 ENTRYPOINT ["run.sh"]

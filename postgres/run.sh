@@ -8,6 +8,7 @@ export POSTGRES_DB="$(jq -r '.database' "$OPTIONS")"
 export PGDATA=/data/postgres
 
 if [ "$(id -u)" = '0' ]; then
+    /usr/local/bin/import.sh
     mkdir -p "$PGDATA"
     chown postgres:postgres /data "$PGDATA"
     # Safety net: postgres refuses to run on files it doesn't own. With the

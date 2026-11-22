@@ -15,6 +15,7 @@ Changes:
 * Postgres 18
 * Automatic, non-destructive `pg_upgrade` migration from existing v12 data, including rebuilding indexes (Alpine -> Debian text sort order), updating extensions, fixing TeslaMate's `earthdistance` functions, keeping the existing client access rules, and a free-disk-space check
 * Runs as uid/gid 70 like previous versions, so existing data files stay readable
+* On first start, imports the database from the original `matt-FFFFFF` PostgreSQL addon (if installed and stopped) via a Supervisor backup, leaving that addon's data unchanged. See [README.md](README.md#moving-from-the-original-matt-ffffff-postgresql-addon)
 * Addon is now built locally (no external image dependency)
 * Dropped armhf/armv7 support
 

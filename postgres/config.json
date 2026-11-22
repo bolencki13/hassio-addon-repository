@@ -10,6 +10,11 @@
   "startup": "system",
   "boot": "auto",
   "timeout": 120,
+  "hassio_api": true,
+  "hassio_role": "backup",
+  "map": [
+    { "type": "backup", "read_only": true }
+  ],
   "ports": {
     "5432/tcp": null
   },
@@ -24,7 +29,8 @@
   "schema": {
     "user": "str",
     "password": "str",
-    "database": "str"
+    "database": "str",
+    "migrate_from_addon": "str?"
   },
   "url": "https://github.com/bolencki13/hassio-addon-repository/blob/main/postgres/README.md"
 }
