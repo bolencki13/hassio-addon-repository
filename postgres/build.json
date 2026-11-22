@@ -1,6 +1,0 @@
-{
-    "build_from": {
-        "amd64": "postgres:18-bookworm",
-        "aarch64": "postgres:18-bookworm"
-    }
-}

@@ -1,5 +1,9 @@
-ARG BUILD_FROM
-FROM ${BUILD_FROM}
+# Fixed base image: the upgrade logic relies on this exact Debian base (it
+# installs the PostgreSQL 12 binaries from the same apt repository). The
+# Supervisor's BUILD_FROM / build.json is deprecated and may hand us its own
+# Alpine base instead, so it is deliberately not used. Multi-arch, so the
+# host's architecture (amd64 or aarch64) is picked automatically.
+FROM postgres:18-bookworm
 
 ENV DEBIAN_FRONTEND=noninteractive
 
