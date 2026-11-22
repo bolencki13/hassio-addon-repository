@@ -13,6 +13,14 @@ RUN mkdir -p /etc/postgresql-common \
     && apt-get install -y --no-install-recommends jq postgresql-12 \
     && rm -rf /var/lib/apt/lists/*
 
+# Earlier versions of this addon (Alpine-based) ran postgres as uid/gid 70,
+# so existing data directories are owned by 70. The Debian image uses 999.
+# Match the old ids so existing data stays readable without changing its
+# ownership.
+RUN groupmod -g 70 postgres \
+    && usermod -u 70 -g 70 postgres \
+    && chown -R postgres:postgres /var/lib/postgresql /run/postgresql
+
 ENV PGDATA=/data/postgres
 
 COPY run.sh /usr/local/bin/run.sh

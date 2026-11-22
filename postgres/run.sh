@@ -10,6 +10,10 @@ export PGDATA=/data/postgres
 if [ "$(id -u)" = '0' ]; then
     mkdir -p "$PGDATA"
     chown postgres:postgres /data "$PGDATA"
+    # Safety net: postgres refuses to run on files it doesn't own. With the
+    # image's uid matching earlier addon versions this normally finds
+    # nothing (same approach as the official docker-entrypoint.sh).
+    find "$PGDATA" \! -user postgres -exec chown postgres:postgres '{}' +
     exec gosu postgres "$0" "$@"
 fi
 

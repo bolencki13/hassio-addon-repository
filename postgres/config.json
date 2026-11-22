@@ -9,7 +9,7 @@
   ],
   "startup": "system",
   "boot": "auto",
-  "timeout": 900,
+  "timeout": 120,
   "ports": {
     "5432/tcp": null
   },
