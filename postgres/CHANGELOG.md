@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+
+* Fix: options were re-read after dropping to the postgres user, which can't read the Supervisor's root-only options.json, so the upgrade ran with an empty user name and stopped. Options are now read once as root.
+
 ## 2.0.0
 
 **MAJOR VERSION UPGRADE - PostgreSQL 12 -> 18**
