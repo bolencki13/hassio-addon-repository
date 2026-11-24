@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.2
+
+* Re-stores the configured user's password in the current SCRAM format (PostgreSQL 12 stored it as md5, which PostgreSQL 18 deprecates). Same password, so clients need no change. Only done when the password in the options matches the stored one; otherwise it is left alone and the log says so. Runs during the migration, or once on the next start for databases already migrated by 2.0.0/2.0.1.
+
 ## 2.0.1
 
 * Fix: options were re-read after dropping to the postgres user, which can't read the Supervisor's root-only options.json, so the upgrade ran with an empty user name and stopped. Options are now read once as root.

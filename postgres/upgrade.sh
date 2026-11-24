@@ -13,8 +13,55 @@ PGDATA="${PGDATA:-/data/postgres}"
 SOCKDIR=/tmp
 TMP_PORT=5433
 
+# Present once the configured user's password has been checked for the old
+# md5 format (see convert_password); the check then never runs again.
+PASSWORD_MARKER="$DATA_ROOT/.password_format_checked"
+SERVER_LOG=/tmp/temp_server.log
+
 log() { echo "upgrade.sh: $*"; }
 die() { echo "upgrade.sh: $*" >&2; exit 1; }
+
+start_server() { # bindir datadir
+    "$1/pg_ctl" -D "$2" -w start -l "$SERVER_LOG" \
+        -o "-c listen_addresses='' -c unix_socket_directories='$SOCKDIR' -p $TMP_PORT"
+}
+stop_server() { # bindir datadir
+    "$1/pg_ctl" -D "$2" -m fast -w stop || true
+}
+
+# PostgreSQL 12 stored passwords as md5 hashes, a format PostgreSQL 18
+# deprecates. The configured user's password is known (it's in this addon's
+# options), so store it again in the current SCRAM format. Only done when
+# the configured password matches the stored hash: re-setting it to a
+# different value would lock out clients using the real one. Needs a
+# temporary server running; connects as $1. Never fails the startup; returns
+# 0 once the password is in the current format, so the check can stop.
+convert_password() { # connect-as user
+    local result
+    result="$(ADDON_USER="$POSTGRES_USER" ADDON_PW="$POSTGRES_PASSWORD" \
+        "$NEW_BINDIR/psql" -X -q -tA -h "$SOCKDIR" -p "$TMP_PORT" -U "$1" -d postgres -v ON_ERROR_STOP=1 2>&1 <<'SQL'
+\getenv u ADDON_USER
+\getenv pw ADDON_PW
+SELECT coalesce(bool_or(rolpassword LIKE 'md5%'), false) AS is_md5,
+       coalesce(bool_or(rolpassword = 'md5' || md5(:'pw' || :'u')), false) AS matches
+FROM pg_authid WHERE rolname = :'u' \gset
+\if :matches
+SET password_encryption = 'scram-sha-256';
+ALTER ROLE :"u" PASSWORD :'pw';
+\echo converted
+\elif :is_md5
+\echo mismatch
+\else
+\echo current
+\endif
+SQL
+)" || { log "could not check the password format ($result); leaving it as it is."; return 1; }
+    case "$result" in
+        converted) log "re-stored the password of user '$POSTGRES_USER' in the current SCRAM format (same password; clients need no change)." ;;
+        mismatch)  log "user '$POSTGRES_USER' still has an md5 password, but it doesn't match the password in this addon's options, so it was left alone. Set the correct password in the options and restart to convert it."; return 1 ;;
+        *)         log "password format of user '$POSTGRES_USER' is already current." ;;
+    esac
+}
 
 # Fresh install: nothing to migrate, let docker-entrypoint.sh initdb normally.
 if [ ! -s "$PGDATA/PG_VERSION" ]; then
@@ -24,6 +71,19 @@ fi
 current_version="$(cat "$PGDATA/PG_VERSION")"
 
 if [ "$current_version" = "$NEW_MAJOR" ]; then
+    # Clusters migrated before the password conversion existed get it once.
+    if [ ! -e "$PASSWORD_MARKER" ]; then
+        log "checking the password format of user '$POSTGRES_USER'..."
+        if start_server "$NEW_BINDIR" "$PGDATA" >/dev/null; then
+            trap 'stop_server "$NEW_BINDIR" "$PGDATA"' EXIT
+            PASSWORD_DONE=0; convert_password "$POSTGRES_USER" || PASSWORD_DONE=1
+            stop_server "$NEW_BINDIR" "$PGDATA" >/dev/null
+            trap - EXIT
+            [ "$PASSWORD_DONE" -ne 0 ] || touch "$PASSWORD_MARKER"
+        else
+            log "could not start a temporary server to check the password format; skipping (see $SERVER_LOG)."
+        fi
+    fi
     exit 0
 fi
 
@@ -54,14 +114,8 @@ if [ "$FREE_KB" -lt "$NEED_KB" ]; then
 fi
 
 mkdir -p "$WORKDIR" "$NEW_DATA"
+SERVER_LOG="$WORKDIR/temp_server.log"
 
-start_server() { # bindir datadir
-    "$1/pg_ctl" -D "$2" -w start -l "$WORKDIR/temp_server.log" \
-        -o "-c listen_addresses='' -c unix_socket_directories='$SOCKDIR' -p $TMP_PORT"
-}
-stop_server() { # bindir datadir
-    "$1/pg_ctl" -D "$2" -m fast -w stop || true
-}
 sql() { # db, query
     "$NEW_BINDIR/psql" -h "$SOCKDIR" -p "$TMP_PORT" -U "$INSTALL_USER" -d "$1" -v ON_ERROR_STOP=1 -tAc "$2"
 }
@@ -168,6 +222,8 @@ log "refreshing planner statistics..."
 "$NEW_BINDIR/vacuumdb" -h "$SOCKDIR" -p "$TMP_PORT" -U "$INSTALL_USER" \
     --all --analyze-in-stages --missing-stats-only
 
+PASSWORD_DONE=0; convert_password "$INSTALL_USER" || PASSWORD_DONE=1
+
 stop_server "$NEW_BINDIR" "$NEW_DATA"
 trap - EXIT
 
@@ -175,6 +231,7 @@ trap - EXIT
 # swap the finished cluster into the normal PGDATA path.
 mv "$PGDATA" "$BACKUP_DATA"
 mv "$NEW_DATA" "$PGDATA"
+[ "$PASSWORD_DONE" -ne 0 ] || touch "$PASSWORD_MARKER"
 
 log "migration to PostgreSQL $NEW_MAJOR complete."
 log "your original PostgreSQL $OLD_MAJOR data directory has been kept as a backup at: $BACKUP_DATA"
